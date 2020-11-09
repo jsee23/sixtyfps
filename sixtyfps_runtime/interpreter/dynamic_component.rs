@@ -211,6 +211,14 @@ impl<'id> Component for ComponentBox<'id> {
     }
 }
 
+/// Safety: the 'id is not 'static, but the vtable does not depends on the 'id
+unsafe impl<'id> vtable::HasStaticVTable<ComponentVTable> for ComponentBox<'id> {
+    fn static_vtable() -> &'static ComponentVTable {
+        static BT: ComponentVTable = ComponentVTable::new::<ComponentBox<'static>>();
+        &BT
+    }
+}
+
 pub(crate) struct ComponentExtraData {
     mouse_grabber: core::cell::Cell<VisitChildrenResult>,
     focus_item: core::cell::Cell<VisitChildrenResult>,
@@ -314,7 +322,7 @@ extern "C" fn visit_children_item(
             let rep_in_comp = unsafe { instance_ref.component_type.repeater[index].get_untaged() };
             let repeater = rep_in_comp.offset.apply_pin(instance_ref.instance);
             let init = || {
-                Rc::pin(instantiate(
+                vtable::VRc::new(instantiate(
                     rep_in_comp.component_to_repeat.clone(),
                     Some(component),
                     #[cfg(target_arch = "wasm32")]
@@ -956,7 +964,7 @@ struct LayoutWithCells<'a, C> {
     padding: Padding,
 }
 
-type RepeatedComponentRc = Pin<Rc<dyn RepeatedComponent<Data = eval::Value>>>;
+type RepeatedComponentRc = vtable::VRc<ComponentVTable, vtable::Dyn>;
 enum BoxLayoutCellTmpData<'a> {
     Item(BoxLayoutCellData<'a>),
     Repeater(Vec<RepeatedComponentRc>),
@@ -971,7 +979,7 @@ impl<'a> BoxLayoutCellTmpData<'a> {
                     c.push((*cell).clone());
                 }
                 BoxLayoutCellTmpData::Repeater(vec) => {
-                    c.extend(vec.iter().map(|x| x.as_ref().box_layout_data()))
+                    c.extend(vec.iter().map(|x| x.as_pin_ref().box_layout_data()))
                 }
             }
         }
@@ -1143,7 +1151,7 @@ fn collect_layouts_recursively<'a, 'b>(
                             static_guard,
                         );
                         rep.0.as_ref().ensure_updated(|| {
-                            Rc::pin(instantiate(
+                            vtable::VRc::new(instantiate(
                                 rep.1.clone(),
                                 Some(component.borrow()),
                                 #[cfg(target_arch = "wasm32")]

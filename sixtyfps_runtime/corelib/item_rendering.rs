@@ -14,6 +14,7 @@ use super::graphics::{
     Frame, GraphicsBackend, GraphicsWindow, RenderingCache, RenderingPrimitivesBuilder,
 };
 use super::items::ItemRef;
+use crate::component::ComponentRc;
 use crate::eventloop::ComponentWindow;
 use crate::item_tree::ItemVisitorResult;
 use cgmath::{Matrix4, SquareMatrix, Vector3};
@@ -80,7 +81,7 @@ pub(crate) fn update_item_rendering_data<Backend: GraphicsBackend>(
 }
 
 pub(crate) fn render_component_items<Backend: GraphicsBackend>(
-    component: crate::component::ComponentRefPin,
+    component: &ComponentRc,
     frame: &mut Backend::Frame,
     rendering_cache: &RefCell<RenderingCache<Backend>>,
     window: &std::rc::Rc<GraphicsWindow<Backend>>,
@@ -124,7 +125,7 @@ pub(crate) fn render_component_items<Backend: GraphicsBackend>(
 }
 
 pub(crate) fn free_item_rendering_data<Backend: GraphicsBackend>(
-    component: crate::component::ComponentRefPin,
+    component: &ComponentRc,
     rendering_cache: &RefCell<RenderingCache<Backend>>,
 ) {
     crate::item_tree::visit_items(

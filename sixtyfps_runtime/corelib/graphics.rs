@@ -606,8 +606,8 @@ impl<Backend: GraphicsBackend> crate::eventloop::GenericWindow for GraphicsWindo
     }
 
     fn draw(self: Rc<Self>) {
-        let component = self.component.borrow().upgrade().unwrap();
-        let component = ComponentRc::borrow_pin(&component);
+        let component_rc = self.component.borrow().upgrade().unwrap();
+        let component = ComponentRc::borrow_pin(&component_rc);
 
         {
             if self.layout_listener.as_ref().is_dirty() {
@@ -626,7 +626,7 @@ impl<Backend: GraphicsBackend> crate::eventloop::GenericWindow for GraphicsWindo
 
             // Generate cached rendering data once
             crate::item_tree::visit_items(
-                component,
+                &component_rc,
                 crate::item_tree::TraversalOrder::BackToFront,
                 |_, item, _| {
                     crate::item_rendering::update_item_rendering_data(
@@ -653,7 +653,7 @@ impl<Backend: GraphicsBackend> crate::eventloop::GenericWindow for GraphicsWindo
             &ARGBColor { red: 255 as u8, green: 255, blue: 255, alpha: 255 }.into(),
         );
         crate::item_rendering::render_component_items(
-            component,
+            &component_rc,
             &mut frame,
             &window.rendering_cache,
             &self,
@@ -820,10 +820,7 @@ impl<Backend: GraphicsBackend> crate::eventloop::GenericWindow for GraphicsWindo
         )
     }
 
-    fn free_graphics_resources(
-        self: Rc<Self>,
-        component: core::pin::Pin<crate::component::ComponentRef>,
-    ) {
+    fn free_graphics_resources(self: Rc<Self>, component: &ComponentRc) {
         match &*self.map_state.borrow() {
             GraphicsWindowBackendState::Unmapped => {}
             GraphicsWindowBackendState::Mapped(window) => {
